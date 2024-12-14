@@ -1,20 +1,15 @@
-/*WITH opioid AS (SELECT 	fc.county
-	,	p2.total_claim_count
-	,	sub.drug_name
---	, 	sub.drug_type
-FROM fips_county AS fc
-INNER JOIN prescriber AS p1
-	ON fc.state = p1.nppes_provider_state
-LEFT JOIN prescription as p2
-	ON p1.npi = p2.npi
-INNER JOIN (	SELECT 	drug_name
-					,	'opioid' AS drug_type
-				FROM 	drug
-				WHERE 	opioid_drug_flag = 'Y') AS sub
-	ON sub.drug_name = p2.drug_name
---GROUP BY fc.county, sub.drug_name
-ORDER BY fc.county, sub.drug_name)*/
-
+SELECT 	p2.total_claim_count/p1.total_claim_count AS claim_proportions
+	,	p1.npi
+FROM prescription AS p1
+	INNER JOIN (SELECT  total_claim_count
+					,	npi
+				FROM prescription
+				WHERE drug_name IN 
+					(	SELECT 	drug_name
+						FROM 	drug
+						WHERE 	opioid_drug_flag = 'Y'))
+						AS p2
+			ON p1.npi=p2.npi
 
 /*QUERY FOR TOTAL CLAIM COUNT BY COUNTY*/
 SELECT 	SUM(p2.total_claim_count) AS total_claim_count
