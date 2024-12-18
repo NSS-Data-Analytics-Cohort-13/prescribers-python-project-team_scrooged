@@ -1,15 +1,109 @@
-SELECT 	p2.total_claim_count/p1.total_claim_count AS claim_proportions
-	,	p1.npi
-FROM prescription AS p1
-	INNER JOIN (SELECT  total_claim_count
-					,	npi
-				FROM prescription
-				WHERE drug_name IN 
-					(	SELECT 	drug_name
-						FROM 	drug
-						WHERE 	opioid_drug_flag = 'Y'))
-						AS p2
-			ON p1.npi=p2.npi
+
+
+/*Question 1*/
+WITH OpioidClaims AS (SELECT 	SUM(p2.total_claim_count) AS total_claim_opioid,
+						        fc.county
+					  FROM
+						        zip_fips AS zf
+					  INNER JOIN
+						        prescriber AS p1 
+									ON zf.zip = p1.nppes_provider_zip5
+				      INNER JOIN (SELECT  	total_claim_count,
+						            		npi
+						        	FROM prescription
+						       		WHERE drug_name IN (
+						                	SELECT
+						                    	drug_name
+						                	FROM
+						                    	drug
+						                	WHERE
+						                    	opioid_drug_flag = 'Y')) AS p2 
+												USING (npi)
+						    INNER JOIN
+						        fips_county AS fc USING (fipscounty)
+						    GROUP BY
+						        fc.county),
+
+								
+TotalClaims AS (
+    SELECT
+        SUM(p2.total_claim_count) AS total_claim_count,
+        fc.county
+    FROM
+        zip_fips AS zf
+    INNER JOIN
+        prescriber AS p1 ON zf.zip = p1.nppes_provider_zip5
+    INNER JOIN (
+        SELECT
+            total_claim_count,
+            npi
+        FROM
+            prescription
+        WHERE
+            drug_name IN (
+                SELECT
+                    drug_name
+                FROM
+                    drug
+            )
+    ) AS p2 USING (npi)
+    INNER JOIN
+        fips_county AS fc USING (fipscounty)
+    GROUP BY
+        fc.county
+)
+SELECT
+    tc.county,
+    tc.total_claim_count,
+    oc.total_claim_opioid,
+	
+   ROUND((CAST(oc.total_claim_opioid AS INT) / tc.total_claim_count) * 100, 2) AS Percentage_Opiod_Prescription
+FROM
+    TotalClaims AS tc
+INNER JOIN
+    OpioidClaims AS oc ON tc.county = oc.county
+ORDER BY
+    Percentage_Opiod_Prescription DESC
+    limit 25
+
+
+
+/*Question 2*/
+SELECT
+    CONCAT(pr.nppes_provider_first_name, ' ', pr.nppes_provider_last_org_name) AS prescriber_name,  -- first & last name of the prescriber
+    SUM(p.total_day_supply) AS total_day_supply           -- Total day supply
+FROM
+    drug d
+JOIN
+    prescription p
+ON
+    d.drug_name = p.drug_name
+JOIN
+    prescriber pr
+ON
+    p.npi = pr.npi
+WHERE
+    d.opioid_drug_flag = 'Y'
+    AND pr.nppes_provider_state = 'TN'
+GROUP BY prescriber_name
+	Order by
+    total_day_supply DESC
+
+
+
+
+
+/*Question 3*/
+
+SELECT 	SUM(overdose_deaths) AS Total_ODs
+	,	year
+FROM overdose_deaths
+GROUP BY year
+
+
+
+
+
 
 /*QUERY FOR TOTAL CLAIM COUNT BY COUNTY*/
 SELECT 	SUM(p2.total_claim_count) AS total_claim_count
