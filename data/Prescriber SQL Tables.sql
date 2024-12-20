@@ -146,51 +146,36 @@ WHERE 	opioid_drug_flag = 'Y'
 
 
 
-SELECT total_claim_count
-FROM prescription
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	SELECT 
-    od.year,
-    SUM(od.overdose_deaths) AS total_deaths,
-    SUM(p.population) AS total_population,
-	fc.county,
-	fc.state
-FROM 
-    overdose_deaths od
-JOIN 
-    fips_county fc
-ON 
+	SELECT
+    d.opioid_drug_flag,
+	d.drug_name,
+    d.long_acting_opioid_drug_flag,
+    SUM(od.overdose_deaths) AS total_deaths
+FROM
+    overdose_deaths AS od
+LEFT JOIN
+    fips_county AS fc
+ON
     CAST(od.fipscounty AS TEXT) = fc.fipscounty
-JOIN 
-    population p
-ON 
-    CAST(fc.fipscounty AS TEXT) = CAST(p.fipscounty AS TEXT)
-WHERE 
+JOIN zip_fips AS zf
+ON
+    fc.fipscounty =  zf.fipscounty
+JOIN
+    prescriber AS ps
+ON  zf.zip = ps.nppes_provider_zip5
+JOIN prescription AS p
+ON   p.npi = ps.npi
+JOIN
+    drug d
+ON
+    p.drug_name = d.drug_name
+WHERE
     fc.state = 'TN'
     AND od.year BETWEEN 2015 AND 2018
-GROUP BY 
-    od.year,fc.state,fc.county
-ORDER BY 
-    od.year;
-    AND year BETWEEN 2015 AND 2018
-GROUP BY 
-    year, opioid_type
-ORDER BY 
-    year, opioid_type;
+    AND d.opioid_drug_flag = 'Y'
+GROUP BY
+    d.opioid_drug_flag, d.long_acting_opioid_drug_flag,d.drug_name
+	ORDER BY total_deaths DESC
+    LIMIT 20;
