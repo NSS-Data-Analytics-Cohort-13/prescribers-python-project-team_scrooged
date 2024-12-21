@@ -140,7 +140,7 @@ LIMIT 10
 
 /*Query for list of opioids in the data set*/
 
-SELECT 	drug_name
+SELECT 	DISTINCT(drug_name)
 FROM 	drug
 WHERE 	opioid_drug_flag = 'Y'
 
@@ -179,3 +179,46 @@ GROUP BY
     d.opioid_drug_flag, d.long_acting_opioid_drug_flag,d.drug_name
 	ORDER BY total_deaths DESC
     LIMIT 20;
+
+
+
+
+SELECT 	SUM(overdose_deaths) AS total_od
+	,	fipscounty
+FROM overdose_deaths
+GROUP BY fipscounty
+ORDER BY total_od DESC
+
+SELECT sum(overdose_deaths)
+FROM overdose_deaths
+
+/*Name of Drug with LLO Flag*/
+WITH opioid_list_with_flag AS (SELECT DISTINCT(d.drug_name) AS drug_name
+	,	d.long_acting_opioid_drug_flag AS llo_flag
+FROM drug AS d
+WHERE opioid_drug_flag = 'Y')
+
+
+SELECT 	p.total_claim_count
+	,	ol.drug_name
+	,	p.npi
+	,	ol.llo_flag
+FROM prescription AS p
+	INNER JOIN opioid_list_with_flag AS ol
+		ON p.drug_name = ol.drug_name
+ORDER BY total_claim_count DESC
+	
+
+
+
+SELECT 	COUNT (od.overdose_Deaths) AS deaths
+	,	p2.drug_name AS name
+FROM overdose_deaths AS od
+	INNER JOIN fips_county AS f
+		ON CAST(f.fipscounty AS int) = od.fipscounty
+	INNER JOIN prescriber AS p1
+		ON f.state = p1.nppes_provider_state
+	INNER JOIN prescription AS p2
+		ON p1.npi=p2.npi
+GROUP BY name
+ORDER BY deaths DESC
